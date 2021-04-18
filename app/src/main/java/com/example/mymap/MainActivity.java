@@ -10,6 +10,7 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 
 import com.amap.api.maps.AMap;
+import com.amap.api.maps.CameraUpdate;
 import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.MapView;
 import com.amap.api.maps.model.CustomMapStyleOptions;
@@ -38,7 +39,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
     // 西南坐标
-    private LatLng southwestLatLng = new LatLng(43.854272, 125.300576);
+    private LatLng southwestLatLng = new LatLng(43.821254, 125.282783);
     // 东北坐标
     private LatLng northeastLatLng = new LatLng(43.854280, 125.300580);
 
@@ -56,7 +57,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         aMap.addMarker(new MarkerOptions().position(southwestLatLng));
         aMap.addMarker(new MarkerOptions().position(northeastLatLng));
 
-        aMap.moveCamera(CameraUpdateFactory.zoomTo(8f));
+        //地图初始位置设置
+        aMap.moveCamera(CameraUpdateFactory.changeLatLng(southwestLatLng));
+        aMap.moveCamera(CameraUpdateFactory.zoomTo(14f));
 
     }
     /**
