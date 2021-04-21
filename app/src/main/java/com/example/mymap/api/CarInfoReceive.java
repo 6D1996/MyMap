@@ -8,7 +8,7 @@ public class CarInfoReceive {
     private String vin;
     private String code;
     private String message;
-    private int timestamp;
+    private String timestamp;
 
     public String getDataResults() {
         return dataResults;
@@ -58,11 +58,25 @@ public class CarInfoReceive {
         this.message = message;
     }
 
-    public int getTimestamp() {
+    public String getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(int timestamp) {
+    public void setTimestamp(String timestamp) {
         this.timestamp = timestamp;
     }
+
+    @Override
+    public String toString() {
+        return "CarInfoReceive{" +
+                "dataResults='" + dataResults + '\'' +
+                ", requestId='" + requestId + '\'' +
+                ", userId='" + userId + '\'' +
+                ", vin='" + vin + '\'' +
+                ", code='" + code + '\'' +
+                ", message='" + message + '\'' +
+                ", timestamp='" + timestamp + '\'' +
+                '}';
+    }
+
 }

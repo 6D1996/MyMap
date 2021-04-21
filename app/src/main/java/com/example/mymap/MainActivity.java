@@ -13,14 +13,15 @@ import android.widget.Toast;
 
 import com.alibaba.fastjson.JSON;
 import com.amap.api.maps.AMap;
-import com.amap.api.maps.CameraUpdate;
 import com.amap.api.maps.CameraUpdateFactory;
+import com.amap.api.maps.CoordinateConverter;
 import com.amap.api.maps.MapView;
 import com.amap.api.maps.model.CustomMapStyleOptions;
 import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.MarkerOptions;
 import com.example.mymap.api.CarInfoReceive;
 import com.example.mymap.api.CarInfoRequest;
+import com.example.mymap.api.DataResult;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,6 +45,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button rsmap;
     private Button nightmap;
     private Button navimap;
+
+    private CarInfoReceive carInfoReceive;
+    private CarInfoRequest carInfoRequest;
+    private DataResult dataResult;
+    String carInfoString="Initial carInfoString";
 
     private CheckBox mStyleCheckbox;
 
@@ -69,54 +75,89 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         init();
 
-        aMap.addMarker(new MarkerOptions().position(southwestLatLng));
-        aMap.addMarker(new MarkerOptions().position(northeastLatLng));
+        aMap.addMarker(new MarkerOptions().position(getCarLocation()));
+
 
         //地图初始位置设置
-        aMap.moveCamera(CameraUpdateFactory.changeLatLng(southwestLatLng));
+        aMap.moveCamera(CameraUpdateFactory.changeLatLng(getCarLocation()));
         aMap.moveCamera(CameraUpdateFactory.zoomTo(15.5f));
 
-        addressRequest();
+        getCarLocation();
 
     }
 
+
     /**
-     * 请求车辆位置
+     * Get car location lat lng
+     *
+     * @return the lat lng
      */
-    public String addressRequest(){
-        CarInfoRequest carInfoRequest = new CarInfoRequest();
+    public LatLng getCarLocation(){
+        carInfoString=requestCarInfo();
+        carInfoReceive=JSON.parseObject(carInfoString,CarInfoReceive.class);
+        Log.d(TAG, "requestCarInfo:DataResults "+carInfoReceive.getDataResults());
+        dataResult=JSON.parseObject(carInfoReceive.getDataResults(),DataResult.class);
+        Log.d(TAG, "requestCarInfo: "+dataResult.getPosition3d());
+        String []position=dataResult.getPosition3d().split(",");
+        double longitude=0, latitude=0;
+        longitude= Double.parseDouble(position[0]);
+        latitude= Double.parseDouble(position[1]);
+        Log.d(TAG, "getCarLocation: 经纬度（"+longitude+","+latitude+")");
+        LatLng latLng = new LatLng(latitude,longitude);
+        CoordinateConverter converter  = new CoordinateConverter(this.getBaseContext());
+        // CoordType.GPS 待转换坐标类型
+        converter.from(CoordinateConverter.CoordType.GPS);
+// sourceLatLng待转换坐标点 LatLng类型
+        converter.coord(latLng);
+// 执行转换操作
+        LatLng desLatLng = converter.convert();
+        return desLatLng;
+    }
+
+    /**
+     * 请求车辆信息
+     */
+    public String requestCarInfo(){
+        carInfoRequest = new CarInfoRequest();
         //序列化
         final String addressRequestJson = JSON.toJSONString(carInfoRequest);
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Log.d(TAG, "postAddressRequest: "+addressRequestJson);
-                    OkHttpClient addressClient=new OkHttpClient();
-                    String hostURL="http://vehicleroadcloud.faw.cn:60443/backend/appBackend/";
-                    Request addressRequest= new Request.Builder()
-                            .url(hostURL+"vehicleCondition")
-                            .post(RequestBody.create(MediaType.parse("application/json"),addressRequestJson))
-                            .build();//创造HTTP请求
-                    //执行发送的指令
-                    Log.d(TAG, "run: 请求json："+addressRequestJson);
-                    Response addressResponse = addressClient.newCall(addressRequest).execute();
-                    String carInfoString=addressResponse.body().string();
-                    Log.d(TAG, "run: 接受到了carInfoString"+carInfoString);
+        carInfoRequest=JSON.parseObject(addressRequestJson,CarInfoRequest.class);
+        Log.d(TAG, "requestCarInfo: "+carInfoRequest.toString());
+        Thread requestCarInfoThread=new Thread(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            Log.d(TAG, "postAddressRequest: "+addressRequestJson);
+                            OkHttpClient addressClient=new OkHttpClient();
+                            String hostURL="http://vehicleroadcloud.faw.cn:60443/backend/appBackend/";
+                            Request addressRequest= new Request.Builder()
+                                    .url(hostURL+"vehicleCondition")
+                                    .post(RequestBody.create(MediaType.parse("application/json"),addressRequestJson))
+                                    .build();//创造HTTP请求
+                            //执行发送的指令
+                            Log.d(TAG, "run: 请求json："+addressRequestJson);
+                            Response addressResponse = addressClient.newCall(addressRequest).execute();
+                            carInfoString=addressResponse.body().string();
+                            Log.d(TAG, "run: 接受到了carInfoString"+carInfoString);
 
-                }catch (Exception e){
-                    e.printStackTrace();
-                    Log.d("POST失敗", "onClick: "+e.toString());
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(MainActivity.this,"請求地址失败！",Toast.LENGTH_LONG).show();
+                        }catch (Exception e){
+                            e.printStackTrace();
+                            Log.d("POST失敗", "onClick: "+e.toString());
+
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(MainActivity.this,"請求地址失败！",Toast.LENGTH_LONG).show();
+                                }
+                            });
                         }
-                    });
+                    }
                 }
-            }
-        }).start();
-        return "";
+        );
+        requestCarInfoThread.start();
+        while (requestCarInfoThread.isAlive()){}
+        return carInfoString;
     }
 
 
