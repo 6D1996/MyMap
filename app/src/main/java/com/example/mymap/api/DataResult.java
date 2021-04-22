@@ -2,15 +2,15 @@ package com.example.mymap.api;
 
 public class DataResult {
 
-    private String timeStamp;
-    private String brake;
-    private String speed3d;
-    private String parkingType;
-    private String parkingTime;
-    private String position3d;
-    private String gears;
-    private String status;
-    private String accelerate3d;
+    private String timeStamp="Initial";
+    private String brake="Initial";
+    private String speed3d="Initial";
+    private String parkingType="Initial";
+    private String parkingTime="Initial";
+    private String position3d="44,125,0";
+    private String gears="Initial";
+    private String status="Initial";
+    private String accelerate3d="Initial";
 
     public String getTimeStamp() {
         return timeStamp;

@@ -3,6 +3,7 @@ package com.example.mymap;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
+import android.graphics.Point;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -16,8 +17,10 @@ import com.amap.api.maps.AMap;
 import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.CoordinateConverter;
 import com.amap.api.maps.MapView;
+import com.amap.api.maps.model.BitmapDescriptorFactory;
 import com.amap.api.maps.model.CustomMapStyleOptions;
 import com.amap.api.maps.model.LatLng;
+import com.amap.api.maps.model.Marker;
 import com.amap.api.maps.model.MarkerOptions;
 import com.example.mymap.api.CarInfoReceive;
 import com.example.mymap.api.CarInfoRequest;
@@ -37,7 +40,7 @@ import static android.content.ContentValues.TAG;
 /**
  * Main activity
  */
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, AMap.OnMarkerClickListener, AMap.OnMapClickListener {
 
     private MapView mapView;
     private AMap aMap;
@@ -45,6 +48,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button rsmap;
     private Button nightmap;
     private Button navimap;
+    private MarkerOptions markerOption;
+
 
     private CarInfoReceive carInfoReceive;
     private CarInfoRequest carInfoRequest;
@@ -59,8 +64,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     // 西南坐标
     private LatLng southwestLatLng = new LatLng(43.833394, 125.164146);
-    // 东北坐标
-    private LatLng northeastLatLng = new LatLng(43.854280, 125.300580);
+    // 目标坐标
+    private LatLng destinyLatLng = new LatLng(43.854280, 125.300580);
 
 
     @Override
@@ -75,16 +80,49 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         init();
 
-        aMap.addMarker(new MarkerOptions().position(getCarLocation()));
+//        aMap.addMarker(new MarkerOptions().position(getCarLocation()));
 
 
         //地图初始位置设置
         aMap.moveCamera(CameraUpdateFactory.changeLatLng(getCarLocation()));
         aMap.moveCamera(CameraUpdateFactory.zoomTo(15.5f));
 
-        getCarLocation();
+        android.graphics.Point paramPoint = new Point();
+        aMap.getProjection().fromScreenLocation(paramPoint);
 
     }
+
+    private void setUpMap() {
+        aMap.setOnMarkerClickListener((AMap.OnMarkerClickListener) this);
+        addMarkersToMap();// 往地图上添加marker
+        aMap.setOnMapClickListener(this);// 对amap添加单击地图事件监听器
+    }
+
+    /**
+     * 在地图上添加marker
+     */
+    private void addMarkersToMap() {
+
+        markerOption = new MarkerOptions().icon(BitmapDescriptorFactory
+                .defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
+                .position(destinyLatLng)
+                .draggable(true);
+        aMap.addMarker(markerOption);
+    }
+
+    /**
+     * 对marker标注点点击响应事件
+     */
+    @Override
+    public boolean onMarkerClick(final Marker marker) {
+        if (aMap != null) {
+//            jumpPoint(marker);
+        }
+        Toast.makeText(MainActivity.this, "您点击了Marker", Toast.LENGTH_LONG).show();
+        return true;
+    }
+
+
 
 
     /**
@@ -144,7 +182,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         }catch (Exception e){
                             e.printStackTrace();
                             Log.d("POST失敗", "onClick: "+e.toString());
-
+                            CarInfoReceive carInfoReceive1=new CarInfoReceive();
+                            DataResult dataResult1 = new DataResult();
+                            carInfoReceive1.setDataResults(JSON.toJSONString(dataResult1));
+                            carInfoString=JSON.toJSONString(carInfoReceive1);
+                            Log.d(TAG, "run: 失败carInfoString"+carInfoString);
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
@@ -167,6 +209,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void init() {
         if (aMap == null) {
             aMap = mapView.getMap();
+            setUpMap();
         }
         setMapCustomStyleFile(this);
         basicmap = (Button)findViewById(R.id.basicmap);
@@ -275,5 +318,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
         mStyleCheckbox.setChecked(false);
+    }
+
+    @Override
+    public void onMapClick(LatLng latLng) {
+        Log.d(TAG, "onMapClick: 点了一下地图");
+        markerOption = new MarkerOptions().icon(BitmapDescriptorFactory
+                .defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
+                .position(latLng)
+                .draggable(true);
+        aMap.addMarker(markerOption);
     }
 }
