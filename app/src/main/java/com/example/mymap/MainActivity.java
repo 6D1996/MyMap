@@ -22,6 +22,7 @@ import com.amap.api.maps.model.CustomMapStyleOptions;
 import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.Marker;
 import com.amap.api.maps.model.MarkerOptions;
+import com.example.mymap.api.CallCarRequest;
 import com.example.mymap.api.CarInfoReceive;
 import com.example.mymap.api.CarInfoRequest;
 import com.example.mymap.api.DataResult;
@@ -58,6 +59,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private CheckBox mStyleCheckbox;
 
+    private CallCarRequest callCarRequest;
+
 
     private CustomMapStyleOptions mapStyleOptions = new CustomMapStyleOptions();
 
@@ -80,7 +83,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         init();
 
-//        aMap.addMarker(new MarkerOptions().position(getCarLocation()));
+        aMap.addMarker(new MarkerOptions().position(getCarLocation()));
 
 
         //地图初始位置设置
@@ -118,6 +121,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (aMap != null) {
 //            jumpPoint(marker);
         }
+        callCarRequest= new CallCarRequest();
+        callCarRequest.callCarToAim(marker.toString());
         Toast.makeText(MainActivity.this, "您点击了Marker", Toast.LENGTH_LONG).show();
         return true;
     }
