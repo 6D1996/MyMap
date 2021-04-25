@@ -12,7 +12,7 @@
         android:theme="@style/Theme.MyMap">
         <meta-data
             android:name="com.amap.api.v2.apikey"
-            android:value="@string/SixD_Key"/>
+            android:value="f881ea47defe2de9ba22de24cf1d5a85"/>
         >
 
         <activity android:name=".MainActivity">
