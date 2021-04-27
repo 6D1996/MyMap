@@ -1,15 +1,20 @@
-package com.example.mymap;
+ package com.example.mymap;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Point;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.alibaba.fastjson.JSON;
@@ -22,6 +27,7 @@ import com.amap.api.maps.model.CustomMapStyleOptions;
 import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.Marker;
 import com.amap.api.maps.model.MarkerOptions;
+import com.example.mymap.api.CallCarReply;
 import com.example.mymap.api.CallCarRequest;
 import com.example.mymap.api.CarInfoReceive;
 import com.example.mymap.api.CarInfoRequest;
@@ -60,13 +66,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private CheckBox mStyleCheckbox;
 
     private CallCarRequest callCarRequest;
+    private CallCarReply callCarReply;
 
 
     private CustomMapStyleOptions mapStyleOptions = new CustomMapStyleOptions();
 
-
-    // 西南坐标
-    private LatLng southwestLatLng = new LatLng(43.833394, 125.164146);
+    // 车辆坐标
+    private LatLng carLatLng = new LatLng(43.83601111412616,125.16247997144413);
     // 目标坐标
     private LatLng destinyLatLng = new LatLng(43.854280, 125.300580);
 
@@ -83,7 +89,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         init();
 
-        aMap.addMarker(new MarkerOptions().position(getCarLocation()));
+        carLatLng=getCarLocation();
+        aMap.addMarker(new MarkerOptions().position(carLatLng));
 
 
         //地图初始位置设置
@@ -119,15 +126,56 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public boolean onMarkerClick(final Marker marker) {
         if (aMap != null) {
-//            jumpPoint(marker);
+            aMap.moveCamera(CameraUpdateFactory.changeLatLng(marker.getPosition()));
         }
-        callCarRequest= new CallCarRequest();
-        callCarRequest.callCarToAim(marker.toString());
-        Toast.makeText(MainActivity.this, "您点击了Marker", Toast.LENGTH_LONG).show();
+        showMyDialog(marker);
         return true;
     }
 
-
+    private void showMyDialog(Marker marker) {
+        //对话框
+        View myView = LayoutInflater.from(MainActivity.this).inflate(R.layout.my_dialog,null,false);
+        final AlertDialog dialog = new AlertDialog.Builder(MainActivity.this).setView(myView).create();
+        TextView Title = myView.findViewById(R.id.title);
+        TextView Context = myView.findViewById(R.id.content);
+        Title.setText("确认泊车");
+        Context.setText("自动泊车是由云端计算机控制车辆自动泊入车位，该功能有一定风险，一切后果将由车主承担");
+        ImageButton Confirm = myView.findViewById(R.id.confirm);
+        ImageButton cancel = myView.findViewById(R.id.cancel);
+        Confirm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                callCarRequest= new CallCarRequest();
+                String stringForCallCar = marker.getPosition().toString();
+                if(carLatLng.longitude<marker.getPosition().latitude){
+                    stringForCallCar+=",90";
+                }else {
+                    stringForCallCar+=",-90";
+                }
+                String callCarString=callCarRequest.callCarToAim(stringForCallCar);
+                callCarReply=JSON.parseObject(callCarString,CallCarReply.class);
+                if (callCarReply.getStatus()==500) {
+                    Toast.makeText(MainActivity.this, "叫车失败", Toast.LENGTH_LONG).show();
+                    dialog.dismiss();
+                }else if("0070200".equals(callCarReply.getCode())) {
+                    Toast.makeText(MainActivity.this, "叫车开始", Toast.LENGTH_LONG).show();
+//                    dialog.dismiss();
+//                Intent intent=new Intent(MainActivity.this, MainActivity.class);
+//                startActivity(intent);
+                dialog.dismiss();
+                }
+            }
+        });
+        cancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(MainActivity.this, "取消成功",Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            }
+        });
+        dialog.show();
+        dialog.getWindow().setLayout(1000,650);
+    }
 
 
     /**

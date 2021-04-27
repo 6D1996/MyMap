@@ -1,7 +1,6 @@
 package com.example.mymap.api;
 
 public class PublicRequest {
-    public String hostURL="http://vehicleroadcloud.faw.cn:60443/backend/appBackend/";
     private String requestId;
     private String userId="6DAndroid";
     private String vin="test_car";
