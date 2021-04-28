@@ -32,6 +32,8 @@ import com.example.mymap.api.CallCarRequest;
 import com.example.mymap.api.CarInfoReceive;
 import com.example.mymap.api.CarInfoRequest;
 import com.example.mymap.api.DataResult;
+import com.example.mymap.api.Destination;
+import com.ip.ipsearch.Util.GpsUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -67,6 +69,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private CallCarRequest callCarRequest;
     private CallCarReply callCarReply;
+    private Destination destination=new Destination();
 
 
     private CustomMapStyleOptions mapStyleOptions = new CustomMapStyleOptions();
@@ -146,13 +149,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void onClick(View v) {
                 callCarRequest= new CallCarRequest();
-                String stringForCallCar = marker.getPosition().toString();
+                double[] desLatLngArr = GpsUtil.gps84_To_Gcj02(marker.getPosition().latitude, marker.getPosition().longitude);
+                LatLng marker_wgs84 = new LatLng(desLatLngArr[0],desLatLngArr[1]);
+                destination.setLatitude(desLatLngArr[0]);
+                destination.setLongitude(desLatLngArr[1]);
                 if(carLatLng.longitude<marker.getPosition().latitude){
-                    stringForCallCar+=",90";
+                    destination.setHeading(90);
                 }else {
-                    stringForCallCar+=",-90";
+                    destination.setHeading(-90);
                 }
-                String callCarString=callCarRequest.callCarToAim(stringForCallCar);
+                String callCarString=callCarRequest.callCarToAim(JSON.toJSONString(destination));
                 callCarReply=JSON.parseObject(callCarString,CallCarReply.class);
                 if (callCarReply.getStatus()==500) {
                     Toast.makeText(MainActivity.this, "叫车失败", Toast.LENGTH_LONG).show();
@@ -202,6 +208,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         converter.coord(latLng);
 // 执行转换操作
         LatLng desLatLng = converter.convert();
+/*        double[] desLatLngArr = GpsUtil.gps84_To_Gcj02(latitude, longitude);
+        LatLng desLatLng = new LatLng(desLatLngArr[0],desLatLngArr[1]);*/
         return desLatLng;
     }
 
