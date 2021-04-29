@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.graphics.Point;
 import android.os.Bundle;
 import android.util.Log;
@@ -27,6 +28,14 @@ import com.amap.api.maps.model.CustomMapStyleOptions;
 import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.Marker;
 import com.amap.api.maps.model.MarkerOptions;
+import com.amap.api.maps.model.Polygon;
+import com.amap.api.maps.model.PolygonOptions;
+import com.amap.api.services.core.AMapException;
+import com.amap.api.services.core.LatLonPoint;
+import com.amap.api.services.geocoder.GeocodeResult;
+import com.amap.api.services.geocoder.GeocodeSearch;
+import com.amap.api.services.geocoder.RegeocodeQuery;
+import com.amap.api.services.geocoder.RegeocodeResult;
 import com.example.mymap.api.CallCarReply;
 import com.example.mymap.api.CallCarRequest;
 import com.example.mymap.api.CarInfoReceive;
@@ -34,6 +43,8 @@ import com.example.mymap.api.CarInfoRequest;
 import com.example.mymap.api.DataResult;
 import com.example.mymap.api.Destination;
 import com.ip.ipsearch.Util.GpsUtil;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,7 +60,8 @@ import static android.content.ContentValues.TAG;
 /**
  * Main activity
  */
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, AMap.OnMarkerClickListener, AMap.OnMapClickListener {
+public class MainActivity extends AppCompatActivity implements
+        View.OnClickListener, AMap.OnMarkerClickListener, AMap.OnMapClickListener, GeocodeSearch.OnGeocodeSearchListener {
 
     private MapView mapView;
     private AMap aMap;
@@ -58,7 +70,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button nightmap;
     private Button navimap;
     private MarkerOptions markerOption;
-
+    private GeocodeSearch geocoderSearch;
+    private Marker marker;
+    private Polygon polygon;
 
     private CarInfoReceive carInfoReceive;
     private CarInfoRequest carInfoRequest;
@@ -96,9 +110,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         aMap.addMarker(new MarkerOptions().position(carLatLng));
 
 
-        //地图初始位置设置
-        aMap.moveCamera(CameraUpdateFactory.changeLatLng(getCarLocation()));
-        aMap.moveCamera(CameraUpdateFactory.zoomTo(15.5f));
+//        //地图初始位置设置
+//        aMap.moveCamera(CameraUpdateFactory.changeLatLng(getCarLocation()));
+//        aMap.moveCamera(CameraUpdateFactory.zoomTo(15.5f));
 
         android.graphics.Point paramPoint = new Point();
         aMap.getProjection().fromScreenLocation(paramPoint);
@@ -109,18 +123,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         aMap.setOnMarkerClickListener((AMap.OnMarkerClickListener) this);
         addMarkersToMap();// 往地图上添加marker
         aMap.setOnMapClickListener(this);// 对amap添加单击地图事件监听器
+        aMap.setMapType(AMap.MAP_TYPE_SATELLITE);
+        // 绘制一个长方形
+        PolygonOptions pOption = new PolygonOptions();
+        pOption.add(new LatLng(43.83604303740284,125.1615908191709));
+        pOption.add(new LatLng(43.83589309459136,125.1616444633503));
+        pOption.add(new LatLng(43.83588438822299,125.16169140200725));
+        pOption.add(new LatLng(43.835763466308755,125.16175175170903));
+        pOption.add(new LatLng(43.83607399329118,125.16326451756757));
+        pOption.add(new LatLng(43.83622103354154,125.16319343902988));
+
+        polygon = aMap.addPolygon(pOption.strokeWidth(4)
+                .strokeColor(Color.argb(50, 54, 58, 90))
+                .fillColor(Color.argb(50,  155,  0,  255)));
+        aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(43.83598692981427,125.1624303505782), 18.6f));
     }
 
     /**
      * 在地图上添加marker
      */
     private void addMarkersToMap() {
-
+        if (marker != null) {
+            marker.remove();
+        }
         markerOption = new MarkerOptions().icon(BitmapDescriptorFactory
                 .defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
                 .position(destinyLatLng)
                 .draggable(true);
-        aMap.addMarker(markerOption);
+        marker=aMap.addMarker(markerOption);
+
     }
 
     /**
@@ -131,7 +162,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (aMap != null) {
             aMap.moveCamera(CameraUpdateFactory.changeLatLng(marker.getPosition()));
         }
-        showMyDialog(marker);
+
+        boolean markerInPolygon = polygon.contains(marker.getPosition());
+        if(markerInPolygon){showMyDialog(marker);}
+        else {
+            Toast.makeText(MainActivity.this, "叫车目的地不在可用区域内", Toast.LENGTH_SHORT).show();
+        }
+
+
         return true;
     }
 
@@ -141,8 +179,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         final AlertDialog dialog = new AlertDialog.Builder(MainActivity.this).setView(myView).create();
         TextView Title = myView.findViewById(R.id.title);
         TextView Context = myView.findViewById(R.id.content);
-        Title.setText("确认泊车");
-        Context.setText("自动泊车是由云端计算机控制车辆自动泊入车位，该功能有一定风险，一切后果将由车主承担");
+        Title.setText("确认叫车？");
+        Context.setText("自动叫车功能是由云端计算机控制车辆自动到达目的地\n该功能有一定风险，一切后果将由车主承担");
         ImageButton Confirm = myView.findViewById(R.id.confirm);
         ImageButton cancel = myView.findViewById(R.id.cancel);
         Confirm.setOnClickListener(new View.OnClickListener() {
@@ -159,16 +197,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     destination.setHeading(-90);
                 }
                 String callCarString=callCarRequest.callCarToAim(JSON.toJSONString(destination));
+                if(callCarString.startsWith("{")){
                 callCarReply=JSON.parseObject(callCarString,CallCarReply.class);
                 if (callCarReply.getStatus()==500) {
                     Toast.makeText(MainActivity.this, "叫车失败", Toast.LENGTH_LONG).show();
                     dialog.dismiss();
                 }else if("0070200".equals(callCarReply.getCode())) {
                     Toast.makeText(MainActivity.this, "叫车开始", Toast.LENGTH_LONG).show();
-//                    dialog.dismiss();
+//进入播放器界面
+                    Intent intent=new Intent(MainActivity.this, RMTPPlayerActivity.class);
+                     startActivity(intent);
+
 //                Intent intent=new Intent(MainActivity.this, MainActivity.class);
 //                startActivity(intent);
-                dialog.dismiss();
+                dialog.dismiss();}
+                }
+                else {
+                    Log.d(TAG, "onClick: 请求叫车失败");
+                    Intent intent=new Intent(MainActivity.this, RMTPPlayerActivity.class);
+                    startActivity(intent);
                 }
             }
         });
@@ -348,7 +395,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * 方法必须重写
      */
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
+    protected void onSaveInstanceState(@NotNull Bundle outState) {
         super.onSaveInstanceState(outState);
         mapView.onSaveInstanceState(outState);
     }
@@ -377,17 +424,55 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.navimap:
                 aMap.setMapType(AMap.MAP_TYPE_NAVI);//导航地图模式
                 break;
+            default:
+                throw new IllegalStateException("Unexpected value: " + view.getId());
         }
         mStyleCheckbox.setChecked(false);
     }
 
     @Override
     public void onMapClick(LatLng latLng) {
-        Log.d(TAG, "onMapClick: 点了一下地图");
+        if (marker != null) {
+            marker.remove();
+        }
+        Log.d(TAG, "onMapClick: 打了一個點"+latLng.toString());
+        LatLonPoint latLonPoint= new LatLonPoint(latLng.latitude, latLng.longitude);
+        getAddress(latLonPoint);
         markerOption = new MarkerOptions().icon(BitmapDescriptorFactory
                 .defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
                 .position(latLng)
                 .draggable(true);
         aMap.addMarker(markerOption);
+    }
+
+    private void getAddress(final LatLonPoint latLonPoint) {
+//        showDialog();
+        Log.d(TAG, "getAddress: 獲取位置");
+        RegeocodeQuery query = new RegeocodeQuery(latLonPoint, 10,
+                GeocodeSearch.AMAP);// 第一个参数表示一个Latlng，第二参数表示范围多少米，第三个参数表示是火系坐标系还是GPS原生坐标系
+        geocoderSearch = new GeocodeSearch(this);
+        geocoderSearch.setOnGeocodeSearchListener(this);
+        geocoderSearch.getFromLocationAsyn(query);// 设置异步逆地理编码请求
+
+    }
+
+    @Override
+    public void onRegeocodeSearched(RegeocodeResult result, int rCode) {
+        if (rCode == AMapException.CODE_AMAP_SUCCESS) {
+            if (result != null && result.getRegeocodeAddress() != null
+                    && result.getRegeocodeAddress().getFormatAddress() != null) {
+                String addressName = result.getRegeocodeAddress().getFormatAddress()
+                        + "附近";
+                Log.d(TAG, "onRegeocodeSearched: "+addressName);
+            } else {
+                Log.d(TAG, "onRegeocodeSearched: 搜索失敗");
+            }
+        } else {
+            Log.d(TAG, "onRegeocodeSearched: 搜索失敗");
+        }
+    }
+
+    @Override
+    public void onGeocodeSearched(GeocodeResult geocodeResult, int i) {
     }
 }

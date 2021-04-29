@@ -35,6 +35,7 @@ android {
 
 dependencies {
 
+    compile 'com.github.fanhua1994:FastVideoPlayer:1.0.6'
 
     compile fileTree(dir: 'libs', include: ['*.jar'])
     //3D地图so及jar
